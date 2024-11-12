@@ -56,14 +56,45 @@ export class BranchCreator {
     }
 
     public async getBranchName(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, sourceBranchName: string): Promise<string> {
+        // Get the current work item
         const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Fields);
-        const workItemType = workItem.fields["System.WorkItemType"];
 
+        const workItemType = workItem.fields["System.WorkItemType"];
         let branchNameTemplate = settingsDocument.defaultBranchNameTemplate;
+
+        // Check for a custom branch name template
         if (workItemType in settingsDocument.branchNameTemplates && settingsDocument.branchNameTemplates[workItemType].isActive) {
             branchNameTemplate = settingsDocument.branchNameTemplates[workItemType].value;
         }
 
+        // Initialize parent work item variables
+        let parentWorkItemType = "Unknown";
+        let parentWorkItemId = "Unknown";
+
+        // Check if the work item has a parent
+        const parentLink = workItem.relations?.find(
+            relation => relation.rel === "System.LinkTypes.Hierarchy-Reverse"
+        );
+
+        if (parentLink) {
+            const parentId = parseInt(parentLink.url.split('/').pop() || "");
+
+            if (parentId) {
+                // Fetch parent work item details
+                const parentWorkItem = await workItemTrackingRestClient.getWorkItem(
+                    parentId,
+                    project,
+                    undefined,
+                    undefined,
+                    WorkItemExpand.Fields
+                );
+
+                parentWorkItemType = parentWorkItem.fields["System.WorkItemType"];
+                parentWorkItemId = parentWorkItem.id.toString();
+            }
+        }
+
+        // Tokenizer to replace placeholders
         const tokenizer = new Tokenizer();
         const tokens = tokenizer.getTokens(branchNameTemplate);
 
@@ -71,11 +102,18 @@ export class BranchCreator {
         tokens.forEach((token) => {
             let workItemFieldName = token.replace('${', '').replace('}', '');
             let workItemFieldValue = ""
+
             if (workItemFieldName == "SourceBranchName") {
                 workItemFieldValue = sourceBranchName
             }
             else if (workItemFieldName == "SourceBranchNameTail") {
                 workItemFieldValue = sourceBranchName.replace(/.+\//, "")
+            }
+            else if (workItemFieldName === "ParentWorkItemType") {
+                workItemFieldValue = parentWorkItemType;
+            }
+            else if (workItemFieldName === "ParentWorkItemID") {
+                workItemFieldValue = parentWorkItemId;
             }
             else {
                 workItemFieldValue = workItem.fields[workItemFieldName];
