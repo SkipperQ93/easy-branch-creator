@@ -128,6 +128,7 @@ export class BranchCreator {
         });
 
         if (settingsDocument.lowercaseBranchName) {
+            branchName = (parentWorkItemType + "/" + parentWorkItemId + "/") + branchName;
             branchName = branchName.toLowerCase();
         }
 
