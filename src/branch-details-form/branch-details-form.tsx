@@ -122,8 +122,8 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
             const branchCreator = new BranchCreator();
             let branchNames: string[] = [];
             for await (const workItemId of this.state.workItems) {
-                const branchName = await branchCreator.getBranchName(workItemTrackingRestClient, settingsDocument, workItemId, this.state.projectName!, this.state.sourceBranchName!);
-                branchNames.push(branchName);
+                const branchName = await branchCreator.getBranchDetails(workItemTrackingRestClient, settingsDocument, workItemId, this.state.projectName!, this.state.sourceBranchName!);
+                branchNames.push(branchName.branchName);
             }
 
             this.setState(prevState => ({

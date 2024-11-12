@@ -17,6 +17,7 @@ import {Tokenizer} from "./tokenizer";
 import {JsonPatchOperation, Operation} from "azure-devops-extension-api/WebApi";
 import SettingsDocument from "./settingsDocument";
 import ParentDetails from "./parentDetails";
+import BranchDetails from "./branchDetails";
 
 export class BranchCreator {
 
@@ -30,9 +31,9 @@ export class BranchCreator {
 
         const repository = await gitRestClient.getRepository(repositoryId, project.name);
 
-        const parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project.name);
-
-        const branchName = await this.getBranchName(workItemTrackingRestClient, settingsDocument, workItemId, project.name, sourceBranchName, parentDetails);
+        const branchDetails = await this.getBranchDetails(workItemTrackingRestClient, settingsDocument, workItemId, project.name, sourceBranchName);
+        const branchName = branchDetails.branchName;
+        const parentDetails = branchDetails.parentDetails;
         const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(branchName)}`;
 
         if (await this.branchExists(gitRestClient, repositoryId, project.name, branchName)) {
@@ -142,7 +143,8 @@ export class BranchCreator {
 
     }
 
-    public async getBranchName(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, sourceBranchName: string, parentDetails: ParentDetails): Promise<string> {
+    public async getBranchDetails(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, sourceBranchName: string): Promise<BranchDetails> {
+        const parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project);
         const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Fields);
         const workItemType = workItem.fields["System.WorkItemType"];
         const workItemTitle = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
@@ -183,7 +185,10 @@ export class BranchCreator {
             branchName = branchName.toLowerCase();
         }
 
-        return branchName;
+        return {
+            parentDetails: parentDetails,
+            branchName: branchName,
+        };
     }
 
     private async createRef(gitRestClient: GitRestClient, repositoryId: string, commitId: string, branchName: string): Promise<void> {
