@@ -31,6 +31,12 @@ export class BranchCreator {
         const repository = await gitRestClient.getRepository(repositoryId, project.name);
 
         const parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project.name);
+
+        globalMessagesSvc.addToast({
+            duration: 3000,
+            message: `Branch Name: ${parentDetails.branchName}`
+        });
+
         const branchName = await this.getBranchName(workItemTrackingRestClient, settingsDocument, workItemId, project.name, sourceBranchName);
         const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(parentDetails.suffix + branchName)}`;
 
@@ -47,10 +53,6 @@ export class BranchCreator {
             });
             return;
         }
-
-        globalMessagesSvc.addDialog({
-            message: `Branch Name: ${parentDetails.branchName}`
-        });
 
         if (await this.branchExists(gitRestClient, repositoryId, project.name, parentDetails.branchName)) {
 
