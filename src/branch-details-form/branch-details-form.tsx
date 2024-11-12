@@ -57,13 +57,13 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
         return (
             <div className="branch-details-form flex-column flex-grow rhythm-vertical-16">
                 <div className="flex-grow">
-                    <RepositorySelect
-                        projectName={this.state.projectName}
-                        onRepositoryChange={(newRepositoryId) => this.onRepositoryChange(newRepositoryId)} />
-                    <BranchSelect
-                        projectName={this.state.projectName}
-                        repositoryId={this.state.selectedRepositoryId}
-                        onBranchChange={(newBranchName) => this.onSourceBranchNameChange(newBranchName)} />
+                    {/*<RepositorySelect*/}
+                    {/*    projectName={this.state.projectName}*/}
+                    {/*    onRepositoryChange={(newRepositoryId) => this.onRepositoryChange(newRepositoryId)} />*/}
+                    {/*<BranchSelect*/}
+                    {/*    projectName={this.state.projectName}*/}
+                    {/*    repositoryId={this.state.selectedRepositoryId}*/}
+                    {/*    onBranchChange={(newBranchName) => this.onSourceBranchNameChange(newBranchName)} />*/}
                     <p>Branch Name</p>
                     <div className="branchNames flex-column scroll-auto">
                         <div>

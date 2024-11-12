@@ -50,12 +50,11 @@ export class BranchCreator {
             return;
         }
 
+        let parentMessage = "";
+
         if (await this.branchExists(gitRestClient, repositoryId, project.name, parentDetails.branchName)) {
 
-            globalMessagesSvc.addToast({
-                duration: 3000,
-                message: `Parent Branch ${parentDetails.branchName} exists.`
-            });
+            parentMessage += `Parent Branch exists.`;
 
         }
         else {
@@ -75,16 +74,13 @@ export class BranchCreator {
             await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, parentDetails.id);
             console.log(`Branch ${parentDetails.branchName} created in repository ${repository.name}`);
 
-            globalMessagesSvc.addToast({
-                duration: 3000,
-                message: `Parent Branch ${parentDetails.branchName} created`
-            });
+            parentMessage += `Parent Branch created.`
 
         }
 
-        const branch = (await gitRestClient.getBranches(repositoryId, project.name)).find((x) => x.name === sourceBranchName);
+        const branch = (await gitRestClient.getBranches(repositoryId, project.name)).find((x) => x.name === parentDetails.branchName);
         if (!branch) {
-            console.warn(`Branch ${sourceBranchName} not found`);
+            console.warn(`Branch ${parentDetails.branchName} not found`);
             return;
         }
 
@@ -95,7 +91,7 @@ export class BranchCreator {
 
         globalMessagesSvc.addToast({
             duration: 3000,
-            message: `Branch ${branchName} created`
+            message: `${parentMessage} Branch ${branchName} created.`
         });
 
         navigationService.openNewWindow(branchUrl, "");
