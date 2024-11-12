@@ -33,7 +33,7 @@ export class BranchCreator {
         const parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project.name);
 
         const branchName = await this.getBranchName(workItemTrackingRestClient, settingsDocument, workItemId, project.name, sourceBranchName, parentDetails);
-        const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(parentDetails.suffix + branchName)}`;
+        const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(branchName)}`;
 
         if (await this.branchExists(gitRestClient, repositoryId, project.name, branchName)) {
             console.info(`Branch ${branchName} already exists in repository ${repository.name}`);
@@ -87,14 +87,14 @@ export class BranchCreator {
             return;
         }
 
-        await this.createRef(gitRestClient, repositoryId, branch.commit.commitId, parentDetails.suffix + branchName);
-        await this.linkBranchToWorkItem(workItemTrackingRestClient, project.id, repositoryId, workItemId, parentDetails.suffix + branchName);
+        await this.createRef(gitRestClient, repositoryId, branch.commit.commitId, branchName);
+        await this.linkBranchToWorkItem(workItemTrackingRestClient, project.id, repositoryId, workItemId, branchName);
         await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, workItemId);
-        console.log(`Branch ${parentDetails.suffix + branchName} created in repository ${repository.name}`);
+        console.log(`Branch ${branchName} created in repository ${repository.name}`);
 
         globalMessagesSvc.addToast({
             duration: 3000,
-            message: `Branch ${parentDetails.suffix + branchName} created`
+            message: `Branch ${branchName} created`
         });
 
         navigationService.openNewWindow(branchUrl, "");
@@ -177,7 +177,7 @@ export class BranchCreator {
             branchName = branchName.replace(token, workItemFieldValue);
         });
 
-        branchName = workItemType.replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement) + "/" + workItemId + "-" + workItemTitle;
+        branchName = parentDetails.suffix + workItemType.replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement) + "/" + workItemId + "-" + workItemTitle;
 
         if (settingsDocument.lowercaseBranchName) {
             branchName = branchName.toLowerCase();
