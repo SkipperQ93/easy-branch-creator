@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      
+
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v0.9.7
         with:
@@ -45,52 +45,52 @@ jobs:
       - name: Tfx Package Prod
         if: github.ref == 'refs/heads/main'
         run: "tfx extension create --manifest-globs vss-extension.json --overrides-file configs/release.json --override '{\"version\": \"${{ steps.gitversion.outputs.semVer }}\"}' --output-path out"
-        
-      - name: Upload Tfx Package
-        uses: actions/upload-artifact@v3.1.0
-        with:
-          name: tfxpackage
-          path: ./out/
 
-  deployment_test:
-    if: github.ref == 'refs/heads/main'
-    needs: [build]
-    runs-on: ubuntu-latest
-    environment: test
-    steps:
-      - name: Download Tfx Package
-        uses: actions/download-artifact@v3.0.0
-        with:
-          name: tfxpackage
-
-      - name: Tfx install
-        run: npm install -g tfx-cli
-      
-      - name: Tfx Package
-        env:
-          AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
-        run: |
-          filename=$(ls bluebasher.bluebasher-easy-branch-creator-test-*.vsix)
-          tfx extension publish --vsix $filename --auth-type pat --token $AZURE_DEVOPS_PAT
-
-
-  deployment_production:
-    if: github.ref == 'refs/heads/main'
-    needs: [deployment_test]
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Download Tfx Package
-        uses: actions/download-artifact@v3.0.0
-        with:
-          name: tfxpackage
-
-      - name: Tfx install
-        run: npm install -g tfx-cli
-      
-      - name: Tfx Package
-        env:
-          AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
-        run: |
-          filename=$(ls bluebasher.bluebasher-easy-branch-creator-*.vsix)
-          tfx extension publish --vsix $filename --auth-type pat --token $AZURE_DEVOPS_PAT
+#      - name: Upload Tfx Package
+#        uses: actions/upload-artifact@v3.1.0
+#        with:
+#          name: tfxpackage
+#          path: ./out/
+#
+#  deployment_test:
+#    if: github.ref == 'refs/heads/main'
+#    needs: [build]
+#    runs-on: ubuntu-latest
+#    environment: test
+#    steps:
+#      - name: Download Tfx Package
+#        uses: actions/download-artifact@v3.0.0
+#        with:
+#          name: tfxpackage
+#
+#      - name: Tfx install
+#        run: npm install -g tfx-cli
+#
+#      - name: Tfx Package
+#        env:
+#          AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+#        run: |
+#          filename=$(ls bluebasher.bluebasher-easy-branch-creator-test-*.vsix)
+#          tfx extension publish --vsix $filename --auth-type pat --token $AZURE_DEVOPS_PAT
+#
+#
+#  deployment_production:
+#    if: github.ref == 'refs/heads/main'
+#    needs: [deployment_test]
+#    runs-on: ubuntu-latest
+#    environment: production
+#    steps:
+#      - name: Download Tfx Package
+#        uses: actions/download-artifact@v3.0.0
+#        with:
+#          name: tfxpackage
+#
+#      - name: Tfx install
+#        run: npm install -g tfx-cli
+#
+#      - name: Tfx Package
+#        env:
+#          AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+#        run: |
+#          filename=$(ls bluebasher.bluebasher-easy-branch-creator-*.vsix)
+#          tfx extension publish --vsix $filename --auth-type pat --token $AZURE_DEVOPS_PAT
