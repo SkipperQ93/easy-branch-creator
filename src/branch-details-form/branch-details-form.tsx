@@ -25,12 +25,13 @@ interface ISelectBranchDetailsState {
     sourceBranchName?: string;
     ready: boolean;
     branchNames: string[];
+    parentBranchName: string | undefined;
 }
 
 class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
     constructor(props: {}) {
         super(props);
-        this.state = { workItems: [], branchNames: [], ready: false };
+        this.state = { workItems: [], branchNames: [], parentBranchName: undefined, ready: false };
     }
 
     public componentDidMount() {
@@ -57,13 +58,17 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
         return (
             <div className="branch-details-form flex-column flex-grow rhythm-vertical-16">
                 <div className="flex-grow">
-                    {/*<RepositorySelect*/}
-                    {/*    projectName={this.state.projectName}*/}
-                    {/*    onRepositoryChange={(newRepositoryId) => this.onRepositoryChange(newRepositoryId)} />*/}
-                    {/*<BranchSelect*/}
-                    {/*    projectName={this.state.projectName}*/}
-                    {/*    repositoryId={this.state.selectedRepositoryId}*/}
-                    {/*    onBranchChange={(newBranchName) => this.onSourceBranchNameChange(newBranchName)} />*/}
+                    <RepositorySelect
+                        projectName={this.state.projectName}
+                        onRepositoryChange={(newRepositoryId) => this.onRepositoryChange(newRepositoryId)} />
+                    {
+                        this.state.parentBranchName &&
+                        <BranchSelect
+                            projectName={this.state.projectName}
+                            repositoryId={this.state.selectedRepositoryId}
+                            parentBranchName={this.state.parentBranchName}
+                            onBranchChange={(newBranchName) => this.onSourceBranchNameChange(newBranchName)} />
+                    }
                     <p>Branch Name</p>
                     <div className="branchNames flex-column scroll-auto">
                         <div>
@@ -122,8 +127,12 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
             const branchCreator = new BranchCreator();
             let branchNames: string[] = [];
             for await (const workItemId of this.state.workItems) {
-                const branchName = await branchCreator.getBranchDetails(workItemTrackingRestClient, settingsDocument, workItemId, this.state.projectName!, this.state.sourceBranchName!);
-                branchNames.push(branchName.branchName);
+                const branchDetails = await branchCreator.getBranchDetails(workItemTrackingRestClient, settingsDocument, workItemId, this.state.projectName!, this.state.sourceBranchName!);
+                this.setState(prevState => ({
+                    ...prevState,
+                    parentBranchName: branchDetails.parentDetails.branchName
+                }))
+                branchNames.push(branchDetails.branchName);
             }
 
             this.setState(prevState => ({

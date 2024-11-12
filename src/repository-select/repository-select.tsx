@@ -47,7 +47,7 @@ export class RepositorySelect extends React.Component<IRepositorySelectProps, IR
             <div className="flex-column">
                 <label className="bolt-formitem-label body-m">Repository</label>
                 <EditableDropdown<string>
-                    disabled={!this.state.ready}
+                    disabled={true}
                     items={this.repositories}
                     selection={this.repositorySelection}
                     onValueChange={(item?: IListBoxItem<string>) => {

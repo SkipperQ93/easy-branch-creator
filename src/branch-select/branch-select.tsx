@@ -12,6 +12,7 @@ import { Icon } from "azure-devops-ui/Icon";
 export interface IBranchSelectProps {
     projectName?: string;
     repositoryId?: string;
+    parentBranchName?: string;
     onBranchChange: (newBranchName?: string) => void;
 }
 
@@ -48,7 +49,7 @@ export class BranchSelect extends React.Component<IBranchSelectProps, IBranchSel
             <div className="flex-column">
                 <label className="bolt-formitem-label body-m">Based on</label>
                 <EditableDropdown<string>
-                    disabled={!this.state.ready}
+                    disabled={true}
                     items={this.branches}
                     selection={this.branchSelection}
                     onValueChange={(item?: IListBoxItem<string>) => {
@@ -79,7 +80,7 @@ export class BranchSelect extends React.Component<IBranchSelectProps, IBranchSel
     }
 
     private async loadBranches() {
-        if (!!!this.props.repositoryId || !!!this.props.projectName) {
+        if (!!!this.props.repositoryId || !!!this.props.projectName|| !!!this.props.parentBranchName) {
             return;
         }
 
@@ -90,7 +91,7 @@ export class BranchSelect extends React.Component<IBranchSelectProps, IBranchSel
 
         if (this.branches.length > 0) {
             const repository = await gitRestClient.getRepository(this.props.repositoryId, this.props.projectName);
-            let branchIndex = repository ? this.branches.value.findIndex((x) => x.data === repository.defaultBranch.replace('refs/heads/', '')) : 0;
+            let branchIndex = repository ? this.branches.value.findIndex((x) => x.data === this.props.parentBranchName) : 0;
             if (branchIndex === -1) {
                 branchIndex = 0;
             }
