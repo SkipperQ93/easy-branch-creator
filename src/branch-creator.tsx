@@ -48,6 +48,10 @@ export class BranchCreator {
             return;
         }
 
+        globalMessagesSvc.addDialog({
+            message: `Branch Name: ${parentDetails.branchName}`
+        });
+
         if (await this.branchExists(gitRestClient, repositoryId, project.name, parentDetails.branchName)) {
 
             globalMessagesSvc.addToast({
