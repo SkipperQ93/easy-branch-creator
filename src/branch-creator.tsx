@@ -32,12 +32,7 @@ export class BranchCreator {
 
         const parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project.name);
 
-        globalMessagesSvc.addToast({
-            duration: 3000,
-            message: `Branch Name: ${parentDetails.branchName}`
-        });
-
-        const branchName = await this.getBranchName(workItemTrackingRestClient, settingsDocument, workItemId, project.name, sourceBranchName);
+        const branchName = await this.getBranchName(workItemTrackingRestClient, settingsDocument, workItemId, project.name, sourceBranchName, parentDetails);
         const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(parentDetails.suffix + branchName)}`;
 
         if (await this.branchExists(gitRestClient, repositoryId, project.name, branchName)) {
@@ -142,14 +137,15 @@ export class BranchCreator {
             type: parentWorkItemType,
             suffix: parentWorkItemType + "/" + parentWorkItemId + "/",
             title: parentWorkItemTitle,
-            branchName: parentWorkItemType + "/" + parentWorkItemId + "-" + parentWorkItemTitle
+            branchName: parentWorkItemType + "/" + parentWorkItemId + "/" + parentWorkItemTitle
         };
 
     }
 
-    public async getBranchName(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, sourceBranchName: string): Promise<string> {
+    public async getBranchName(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, sourceBranchName: string, parentDetails: ParentDetails): Promise<string> {
         const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Fields);
         const workItemType = workItem.fields["System.WorkItemType"];
+        const workItemTitle = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
 
         let branchNameTemplate = settingsDocument.defaultBranchNameTemplate;
         if (workItemType in settingsDocument.branchNameTemplates && settingsDocument.branchNameTemplates[workItemType].isActive) {
@@ -180,6 +176,8 @@ export class BranchCreator {
             }
             branchName = branchName.replace(token, workItemFieldValue);
         });
+
+        branchName = workItemType.replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement) + "/" + workItemId + "-" + workItemTitle;
 
         if (settingsDocument.lowercaseBranchName) {
             branchName = branchName.toLowerCase();
