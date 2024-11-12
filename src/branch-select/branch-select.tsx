@@ -84,21 +84,12 @@ export class BranchSelect extends React.Component<IBranchSelectProps, IBranchSel
             return;
         }
 
-        const gitRestClient = getClient(GitRestClient);
-        const branches = await gitRestClient.getBranches(this.props.repositoryId, this.props.projectName);
         this.branches.removeAll();
-        this.branches.push(...branches.map(t => { return { id: t.name, data: t.name, text: t.name } }));
+        this.branches.push( { id: this.props.parentBranchName, data: this.props.parentBranchName, text: this.props.parentBranchName })
 
-        if (this.branches.length > 0) {
-            const repository = await gitRestClient.getRepository(this.props.repositoryId, this.props.projectName);
-            let branchIndex = repository ? this.branches.value.findIndex((x) => x.data === this.props.parentBranchName) : 0;
-            if (branchIndex === -1) {
-                branchIndex = 0;
-            }
+        this.setSelectedBranchName(this.props.parentBranchName);
+        this.branchSelection.select(0);
 
-            this.setSelectedBranchName(branches[branchIndex].name);
-            this.branchSelection.select(branchIndex);
-        }
     }
 
     private setSelectedBranchName(branchName?: string) {
