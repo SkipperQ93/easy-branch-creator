@@ -16,6 +16,7 @@ import {StorageService} from "./storage-service";
 import {Tokenizer} from "./tokenizer";
 import {JsonPatchOperation, Operation} from "azure-devops-extension-api/WebApi";
 import SettingsDocument from "./settingsDocument";
+import ParentDetails from "./parentDetails";
 
 export class BranchCreator {
 
@@ -29,21 +30,36 @@ export class BranchCreator {
 
         const repository = await gitRestClient.getRepository(repositoryId, project.name);
 
+        const parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project.name);
         const branchName = await this.getBranchName(workItemTrackingRestClient, settingsDocument, workItemId, project.name, sourceBranchName);
-        const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(branchName)}`;
+        const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(parentDetails.suffix + branchName)}`;
 
         if (await this.branchExists(gitRestClient, repositoryId, project.name, branchName)) {
-            console.info(`Branch ${branchName} aready exists in repository ${repository.name}`);
+            console.info(`Branch ${branchName} already exists in repository ${repository.name}`);
 
             globalMessagesSvc.addToast({
                 duration: 3000,
-                message: `Branch ${branchName} aready exists`,
+                message: `Branch ${branchName} already exists`,
                 callToAction: "Open branch",
                 onCallToActionClick: async () => {
                     navigationService.openNewWindow(branchUrl, "");
                 }
             });
             return;
+        }
+
+        if (await this.branchExists(gitRestClient, repositoryId, project.name, parentDetails.branchName)) {
+        }
+        else {
+            const defaultBranch = (await gitRestClient.getBranches(repositoryId, project.name)).find((x) => x.isBaseVersion);
+            if (!defaultBranch) {
+                console.warn(`Default branch not found`);
+                return;
+            }
+            await this.createRef(gitRestClient, repositoryId, defaultBranch.commit.commitId, parentDetails.branchName);
+            await this.linkBranchToWorkItem(workItemTrackingRestClient, project.id, repositoryId, parentDetails.id, parentDetails.branchName);
+            await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, parentDetails.id);
+            console.log(`Branch ${branchName} created in repository ${repository.name}`);
         }
 
         const branch = (await gitRestClient.getBranches(repositoryId, project.name)).find((x) => x.name === sourceBranchName);
@@ -65,12 +81,13 @@ export class BranchCreator {
         navigationService.openNewWindow(branchUrl, "");
     }
 
-    public async getParentSuffix(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, sourceBranchName: string): Promise<string> {
+    public async getParentDetails(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string): Promise<ParentDetails> {
         const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Relations);
 
         // Initialize parent work item variables
         let parentWorkItemType = "Unknown";
-        let parentWorkItemId = "Unknown";
+        let parentWorkItemId = 0;
+        let parentWorkItemTitle = "Unknown";
 
         // Check if the work item has a parent
         const parentLink = workItem.relations?.find(
@@ -90,12 +107,19 @@ export class BranchCreator {
                     WorkItemExpand.Fields
                 );
 
-                parentWorkItemType = parentWorkItem.fields["System.WorkItemType"].replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
-                parentWorkItemId = parentWorkItem.id.toString();
+                parentWorkItemType = parentWorkItem.fields["System.WorkItemType"].toLowerCase().replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
+                parentWorkItemId = parentWorkItem.id;
+                parentWorkItemTitle = parentWorkItem.fields["System.Title"].toLowerCase().replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
             }
         }
 
-        return parentWorkItemType + "/" + parentWorkItemId + "/";
+        return {
+            id: parentWorkItemId,
+            type: parentWorkItemType,
+            suffix: parentWorkItemType + "/" + parentWorkItemId + "/",
+            title: parentWorkItemTitle,
+            branchName: parentWorkItemType + "/" + parentWorkItemId + "-" + parentWorkItemTitle
+        };
 
     }
 
