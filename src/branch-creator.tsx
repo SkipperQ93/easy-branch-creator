@@ -57,7 +57,7 @@ export class BranchCreator {
 
     public async getBranchName(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, sourceBranchName: string): Promise<string> {
         // Get the current work item
-        const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Fields);
+        const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.All);
 
         const workItemType = workItem.fields["System.WorkItemType"];
         let branchNameTemplate = settingsDocument.defaultBranchNameTemplate;
