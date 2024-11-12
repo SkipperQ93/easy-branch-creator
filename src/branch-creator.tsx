@@ -1,10 +1,20 @@
 import * as SDK from "azure-devops-extension-sdk";
-import { CommonServiceIds, getClient, IGlobalMessagesService, IHostNavigationService, IProjectInfo } from "azure-devops-extension-api";
-import { WorkItemTrackingRestClient, WorkItemExpand, WorkItemRelation } from "azure-devops-extension-api/WorkItemTracking";
-import { GitRestClient } from "azure-devops-extension-api/Git";
-import { StorageService } from "./storage-service";
-import { Tokenizer } from "./tokenizer";
-import { JsonPatchOperation, Operation } from "azure-devops-extension-api/WebApi";
+import {
+    CommonServiceIds,
+    getClient,
+    IGlobalMessagesService,
+    IHostNavigationService,
+    IProjectInfo
+} from "azure-devops-extension-api";
+import {
+    WorkItemExpand,
+    WorkItemRelation,
+    WorkItemTrackingRestClient
+} from "azure-devops-extension-api/WorkItemTracking";
+import {GitRestClient} from "azure-devops-extension-api/Git";
+import {StorageService} from "./storage-service";
+import {Tokenizer} from "./tokenizer";
+import {JsonPatchOperation, Operation} from "azure-devops-extension-api/WebApi";
 import SettingsDocument from "./settingsDocument";
 
 export class BranchCreator {
@@ -55,17 +65,8 @@ export class BranchCreator {
         navigationService.openNewWindow(branchUrl, "");
     }
 
-    public async getBranchName(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, sourceBranchName: string): Promise<string> {
-        // Get the current work item
-        const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.All);
-
-        const workItemType = workItem.fields["System.WorkItemType"];
-        let branchNameTemplate = settingsDocument.defaultBranchNameTemplate;
-
-        // Check for a custom branch name template
-        if (workItemType in settingsDocument.branchNameTemplates && settingsDocument.branchNameTemplates[workItemType].isActive) {
-            branchNameTemplate = settingsDocument.branchNameTemplates[workItemType].value;
-        }
+    public async getParentSuffix(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, sourceBranchName: string): Promise<string> {
+        const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Relations);
 
         // Initialize parent work item variables
         let parentWorkItemType = "Unknown";
@@ -94,7 +95,19 @@ export class BranchCreator {
             }
         }
 
-        // Tokenizer to replace placeholders
+        return parentWorkItemType + "/" + parentWorkItemId + "/";
+
+    }
+
+    public async getBranchName(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, sourceBranchName: string): Promise<string> {
+        const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Fields);
+        const workItemType = workItem.fields["System.WorkItemType"];
+
+        let branchNameTemplate = settingsDocument.defaultBranchNameTemplate;
+        if (workItemType in settingsDocument.branchNameTemplates && settingsDocument.branchNameTemplates[workItemType].isActive) {
+            branchNameTemplate = settingsDocument.branchNameTemplates[workItemType].value;
+        }
+
         const tokenizer = new Tokenizer();
         const tokens = tokenizer.getTokens(branchNameTemplate);
 
@@ -102,18 +115,11 @@ export class BranchCreator {
         tokens.forEach((token) => {
             let workItemFieldName = token.replace('${', '').replace('}', '');
             let workItemFieldValue = ""
-
             if (workItemFieldName == "SourceBranchName") {
                 workItemFieldValue = sourceBranchName
             }
             else if (workItemFieldName == "SourceBranchNameTail") {
                 workItemFieldValue = sourceBranchName.replace(/.+\//, "")
-            }
-            else if (workItemFieldName === "ParentWorkItemType") {
-                workItemFieldValue = parentWorkItemType;
-            }
-            else if (workItemFieldName === "ParentWorkItemID") {
-                workItemFieldValue = parentWorkItemId;
             }
             else {
                 workItemFieldValue = workItem.fields[workItemFieldName];
@@ -128,7 +134,6 @@ export class BranchCreator {
         });
 
         if (settingsDocument.lowercaseBranchName) {
-            branchName = (parentWorkItemType + "/" + parentWorkItemId + "/") + branchName;
             branchName = branchName.toLowerCase();
         }
 
