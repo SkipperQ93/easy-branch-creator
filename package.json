@@ -13,7 +13,7 @@
     "clean": "rimraf ./dist ./out",
     "compile": "npm run clean && webpack --mode production",
     "compile:dev": "npm run clean && webpack --mode development",
-    "package": "npm run compile && tfx extension create --override '{\"version\": \"69.0.6\"}' --manifest-globs vss-extension.json --overrides-file configs/release.json --output-path out",
+    "package": "npm run compile && tfx extension create --override '{\"version\": \"69.0.7\"}' --manifest-globs vss-extension.json --overrides-file configs/release.json --output-path out",
     "package:dev": "npm run compile:dev && tfx extension create --manifest-globs vss-extension.json --overrides-file configs/dev.json --output-path out",
     "package:test": "npm run compile:dev && tfx extension create --manifest-globs vss-extension.json --overrides-file configs/test.json --output-path out",
     "publish": "npm run compile && tfx extension publish --manifest-globs vss-extension.json --overrides-file configs/release.json --output-path out",

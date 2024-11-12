@@ -36,6 +36,14 @@ export class BranchCreator {
         const parentDetails = branchDetails.parentDetails;
         const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(branchName)}`;
 
+        if (branchDetails.workItemType.toLowerCase() !== "task" && branchDetails.workItemType.toLowerCase() !== "bug") {
+            globalMessagesSvc.addToast({
+                duration: 3000,
+                message: `Work Item Can Only Be: Task, Bug`,
+            });
+            return;
+        }
+
         if (await this.branchExists(gitRestClient, repositoryId, project.name, branchName)) {
             console.info(`Branch ${branchName} already exists in repository ${repository.name}`);
 
@@ -184,6 +192,7 @@ export class BranchCreator {
         return {
             parentDetails: parentDetails,
             branchName: branchName,
+            workItemType: workItemType
         };
     }
 
