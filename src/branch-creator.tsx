@@ -49,17 +49,35 @@ export class BranchCreator {
         }
 
         if (await this.branchExists(gitRestClient, repositoryId, project.name, parentDetails.branchName)) {
+
+            globalMessagesSvc.addToast({
+                duration: 3000,
+                message: `Parent Branch ${parentDetails.branchName} exists.`
+            });
+
         }
         else {
             const defaultBranch = (await gitRestClient.getBranches(repositoryId, project.name)).find((x) => x.isBaseVersion);
             if (!defaultBranch) {
                 console.warn(`Default branch not found`);
+
+                globalMessagesSvc.addToast({
+                    duration: 3000,
+                    message: `Default branch not found`
+                });
+
                 return;
             }
             await this.createRef(gitRestClient, repositoryId, defaultBranch.commit.commitId, parentDetails.branchName);
             await this.linkBranchToWorkItem(workItemTrackingRestClient, project.id, repositoryId, parentDetails.id, parentDetails.branchName);
             await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, parentDetails.id);
-            console.log(`Branch ${branchName} created in repository ${repository.name}`);
+            console.log(`Branch ${parentDetails.branchName} created in repository ${repository.name}`);
+
+            globalMessagesSvc.addToast({
+                duration: 3000,
+                message: `Parent Branch ${parentDetails.branchName} created`
+            });
+
         }
 
         const branch = (await gitRestClient.getBranches(repositoryId, project.name)).find((x) => x.name === sourceBranchName);
