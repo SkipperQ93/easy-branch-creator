@@ -89,7 +89,7 @@ export class BranchCreator {
                     WorkItemExpand.Fields
                 );
 
-                parentWorkItemType = parentWorkItem.fields["System.WorkItemType"];
+                parentWorkItemType = parentWorkItem.fields["System.WorkItemType"].replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
                 parentWorkItemId = parentWorkItem.id.toString();
             }
         }
