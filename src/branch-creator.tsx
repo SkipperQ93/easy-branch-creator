@@ -39,7 +39,7 @@ export class BranchCreator {
         if (branchDetails.workItemType.toLowerCase() !== "task" && branchDetails.workItemType.toLowerCase() !== "bug") {
             globalMessagesSvc.addToast({
                 duration: 3000,
-                message: `Work Item Can Only Be: Task, Bug`,
+                message: `Kindly create a Task/Bug and create branch for that instead of directly working on this ${branchDetails.workItemType}.`,
             });
             return;
         }
