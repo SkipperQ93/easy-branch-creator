@@ -34,7 +34,7 @@ function createBranchFromWorkItem() {
                 onClose: (result: ISelectBranchDetailsResult | undefined) => {
                     if (result !== undefined) {
                         workItems.forEach((id: number) => {
-                            branchCreator.createBranch(id, result.repositoryId, result.sourceBranchName, project, gitBaseUrl);
+                            branchCreator.createBranch(id, result.repositoryId, project, gitBaseUrl);
                         });
                     }
                 }
