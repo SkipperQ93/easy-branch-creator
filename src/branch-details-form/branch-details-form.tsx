@@ -15,7 +15,7 @@ import { BranchSelect } from "../branch-select/branch-select";
 
 export interface ISelectBranchDetailsResult {
     repositoryId: string;
-    sourceBranchName: string;
+    sourceBranchName?: string;
 }
 
 interface ISelectBranchDetailsState {
@@ -83,7 +83,7 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
                         disabled={!this.state.selectedRepositoryId}
                         primary={true}
                         text="Create Branch"
-                        onClick={() => this.close(this.state.selectedRepositoryId && this.state.sourceBranchName ? {
+                        onClick={() => this.close(this.state.selectedRepositoryId ? {
                             repositoryId: this.state.selectedRepositoryId,
                             sourceBranchName: this.state.sourceBranchName
                         } : undefined)}

@@ -153,7 +153,7 @@ export class BranchCreator {
                     type: parentWorkItemType,
                     suffix: parentWorkItemType + "/" + parentWorkItemId + "/",
                     title: parentWorkItemTitle,
-                    branchName: parentWorkItemType + "/" + parentWorkItemId + "/" + parentWorkItemTitle
+                    branchName: parentWorkItemType + "/" + parentWorkItemId + "/parent-branch-" + parentWorkItemTitle
                 };
             }
         }
@@ -168,29 +168,7 @@ export class BranchCreator {
         const workItemType = workItem.fields["System.WorkItemType"];
         const workItemTitle = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
 
-        let branchNameTemplate = settingsDocument.defaultBranchNameTemplate;
-        if (workItemType in settingsDocument.branchNameTemplates && settingsDocument.branchNameTemplates[workItemType].isActive) {
-            branchNameTemplate = settingsDocument.branchNameTemplates[workItemType].value;
-        }
-
-        const tokenizer = new Tokenizer();
-        const tokens = tokenizer.getTokens(branchNameTemplate);
-
-        let branchName = branchNameTemplate;
-        tokens.forEach((token) => {
-            let workItemFieldName = token.replace('${', '').replace('}', '');
-            let workItemFieldValue = ""
-            workItemFieldValue = workItem.fields[workItemFieldName];
-
-            if (workItemFieldValue) {
-                if (typeof workItemFieldValue.replace === 'function') {
-                    workItemFieldValue = workItemFieldValue.replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
-                }
-            }
-            branchName = branchName.replace(token, workItemFieldValue);
-        });
-
-        branchName = (parentDetails ? parentDetails.suffix : "") + workItemType.replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement) + "/" + workItemId + "-" + workItemTitle;
+        let branchName = (parentDetails ? parentDetails.suffix : "") + workItemType.replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement) + "/" + workItemId + "-" + workItemTitle;
 
         if (settingsDocument.lowercaseBranchName) {
             branchName = branchName.toLowerCase();
