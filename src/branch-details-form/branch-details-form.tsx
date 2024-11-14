@@ -3,7 +3,7 @@ import "./branch-details-form.scss";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as SDK from "azure-devops-extension-sdk";
-import { getClient } from "azure-devops-extension-api";
+import {CommonServiceIds, getClient, IGlobalMessagesService} from "azure-devops-extension-api";
 
 import { Button } from "azure-devops-ui/Button";
 import { ButtonGroup } from "azure-devops-ui/ButtonGroup";
@@ -120,6 +120,7 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
 
     private async setBranchNames() {
         if (this.state.projectName) {
+            const globalMessagesSvc = await SDK.getService<IGlobalMessagesService>(CommonServiceIds.GlobalMessagesService);
             const workItemTrackingRestClient = getClient(WorkItemTrackingRestClient);
             const storageService = new StorageService();
             const settingsDocument = await storageService.getSettings();
@@ -128,6 +129,25 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
             let branchNames: string[] = [];
             for await (const workItemId of this.state.workItems) {
                 const branchDetails = await branchCreator.getBranchDetails(workItemTrackingRestClient, settingsDocument, workItemId, this.state.projectName!);
+
+                if (branchDetails.workItemType.toLowerCase() !== "task" && branchDetails.workItemType.toLowerCase() !== "bug") {
+                    globalMessagesSvc.addDialog({
+                        message: `Kindly create a Task/Bug and create branch for that instead of directly working on this ${branchDetails.workItemType}.`,
+                    });
+                    this.close(undefined);
+                }
+
+                if (branchDetails.parentDetails) {
+
+                    if (branchDetails.parentDetails.type.toLowerCase() !== "vulnerability" && branchDetails.parentDetails.type.toLowerCase() !== "user-story") {
+                        globalMessagesSvc.addDialog({
+                            message: `Kindly create branch on an item that is under a User Story/Vulnerability.`,
+                        });
+                        this.close(undefined);
+                    }
+
+                }
+
                 this.setState(prevState => ({
                     ...prevState,
                     parentBranchName: branchDetails.parentDetails?.branchName

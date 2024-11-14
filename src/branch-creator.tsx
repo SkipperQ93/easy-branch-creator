@@ -36,23 +36,9 @@ export class BranchCreator {
         const parentDetails = branchDetails.parentDetails;
         const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(branchName)}`;
 
-        if (branchDetails.workItemType.toLowerCase() !== "task" && branchDetails.workItemType.toLowerCase() !== "bug") {
-            globalMessagesSvc.addDialog({
-                message: `Kindly create a Task/Bug and create branch for that instead of directly working on this ${branchDetails.workItemType}.`,
-            });
-            return;
-        }
-
         let parentMessage = "";
 
         if (parentDetails) {
-
-            if (parentDetails.type.toLowerCase() !== "vulnerability" && parentDetails.type.toLowerCase() !== "user story") {
-                globalMessagesSvc.addDialog({
-                    message: `Kindly create branch on an item that is under a User Story/Vulnerability.`,
-                });
-                return;
-            }
 
             if (await this.branchExists(gitRestClient, repositoryId, project.name, parentDetails.branchName)) {
 
