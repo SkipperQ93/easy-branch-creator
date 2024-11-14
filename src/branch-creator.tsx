@@ -176,6 +176,7 @@ export class BranchCreator {
 
         let branchName =
             workItemType.replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement) +
+            "/" +
             (parentDetails ? (parentDetails.type + "-" + parentDetails.id) : "unparented") +
             "/" +
             workItemId +
