@@ -37,8 +37,7 @@ export class BranchCreator {
         const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(branchName)}`;
 
         if (branchDetails.workItemType.toLowerCase() !== "task" && branchDetails.workItemType.toLowerCase() !== "bug") {
-            globalMessagesSvc.addToast({
-                duration: 3000,
+            globalMessagesSvc.addDialog({
                 message: `Kindly create a Task/Bug and create branch for that instead of directly working on this ${branchDetails.workItemType}.`,
             });
             return;
@@ -47,6 +46,14 @@ export class BranchCreator {
         let parentMessage = "";
 
         if (parentDetails) {
+
+            if (parentDetails.type.toLowerCase() !== "vulnerability" && parentDetails.type.toLowerCase() !== "user story") {
+                globalMessagesSvc.addDialog({
+                    message: `Kindly create branch on an item that is under a User Story/Vulnerability.`,
+                });
+                return;
+            }
+
             if (await this.branchExists(gitRestClient, repositoryId, project.name, parentDetails.branchName)) {
 
                 parentMessage += `Parent Branch exists.`;
@@ -151,9 +158,8 @@ export class BranchCreator {
                 return {
                     id: parentWorkItemId,
                     type: parentWorkItemType,
-                    suffix: parentWorkItemType + "/" + parentWorkItemId + "/",
                     title: parentWorkItemTitle,
-                    branchName: parentWorkItemType + "/" + parentWorkItemId + "/parent-branch-" + parentWorkItemTitle
+                    branchName: parentWorkItemType + "/" + parentWorkItemId + "-" + parentWorkItemTitle
                 };
             }
         }
@@ -168,7 +174,13 @@ export class BranchCreator {
         const workItemType = workItem.fields["System.WorkItemType"];
         const workItemTitle = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
 
-        let branchName = (parentDetails ? parentDetails.suffix : "") + workItemType.replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement) + "/" + workItemId + "-" + workItemTitle;
+        let branchName =
+            workItemType.replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement) +
+            (parentDetails ? (parentDetails.type + "-" + parentDetails.id) : "unparented") +
+            "/" +
+            workItemId +
+            "-" +
+            workItemTitle;
 
         if (settingsDocument.lowercaseBranchName) {
             branchName = branchName.toLowerCase();
