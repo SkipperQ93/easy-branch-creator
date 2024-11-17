@@ -141,7 +141,7 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
 
                     if (branchDetails.parentDetails.type.toLowerCase() !== "vulnerability" && branchDetails.parentDetails.type.toLowerCase() !== "user-story") {
                         globalMessagesSvc.addDialog({
-                            message: `Kindly create branch on an item that is under a User Story/Vulnerability. Parent: ${branchDetails.parentDetails.type}`,
+                            message: `Kindly create branch on an item that is under a User Story/Vulnerability.`,
                         });
                         this.close(undefined);
                     }

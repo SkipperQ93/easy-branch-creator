@@ -137,9 +137,9 @@ export class BranchCreator {
                     WorkItemExpand.Fields
                 );
 
-                parentWorkItemType = parentWorkItem.fields["System.WorkItemType"].toLowerCase().replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
+                parentWorkItemType = parentWorkItem.fields["System.WorkItemType"].toLowerCase().replace(/[^a-zA-Z0-9]/g, "-");
                 parentWorkItemId = parentWorkItem.id;
-                parentWorkItemTitle = parentWorkItem.fields["System.Title"].toLowerCase().replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
+                parentWorkItemTitle = parentWorkItem.fields["System.Title"].toLowerCase().replace(/[^a-zA-Z0-9]/g, "-");
 
                 return {
                     id: parentWorkItemId,
@@ -158,10 +158,10 @@ export class BranchCreator {
         const parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project);
         const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Fields);
         const workItemType = workItem.fields["System.WorkItemType"];
-        const workItemTitle = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement);
+        const workItemTitle = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, "-");
 
         let branchName =
-            workItemType.replace(/[^a-zA-Z0-9]/g, settingsDocument.nonAlphanumericCharactersReplacement) +
+            workItemType.replace(/[^a-zA-Z0-9]/g, "-") +
             "/" +
             (parentDetails ? (parentDetails.type + "-" + parentDetails.id) : "unparented") +
             "/" +
