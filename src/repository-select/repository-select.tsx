@@ -1,5 +1,5 @@
 import * as React from "react";
-import { getClient } from "azure-devops-extension-api";
+import {CommonServiceIds, getClient, IGlobalMessagesService} from "azure-devops-extension-api";
 import { GitRestClient } from "azure-devops-extension-api/Git";
 
 import { EditableDropdown } from "azure-devops-ui/EditableDropdown";
@@ -8,6 +8,7 @@ import { ObservableArray } from "azure-devops-ui/Core/Observable";
 import { IListBoxItem } from "azure-devops-ui/ListBox";
 import { ITableColumn, SimpleTableCell } from "azure-devops-ui/Table";
 import { Icon } from "azure-devops-ui/Icon";
+import * as SDK from "azure-devops-extension-sdk";
 
 export interface IRepositorySelectProps {
     projectName?: string;
@@ -87,8 +88,17 @@ export class RepositorySelect extends React.Component<IRepositorySelectProps, IR
         this.repositories.push(...repositories.map(t => { return { id: t.id, data: t.id, text: t.name } }));
 
         if (this.repositories.length > 0) {
-            this.setSelectedRepositoryId(repositories[0].id);
-            this.repositorySelection.select(0);
+            const codeBranchIndex = repositories.findIndex(value => value.name === this.props.projectName);
+            if (codeBranchIndex > -1) {
+                this.setSelectedRepositoryId(repositories[codeBranchIndex].id);
+                this.repositorySelection.select(codeBranchIndex);
+            }
+            else {
+                const globalMessagesSvc = await SDK.getService<IGlobalMessagesService>(CommonServiceIds.GlobalMessagesService);
+                globalMessagesSvc.addDialog({
+                    message: `Project does not have a repository named: ${this.props.projectName}.`,
+                });
+            }
         }
     }
 
