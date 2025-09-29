@@ -155,7 +155,12 @@ export class BranchCreator {
     }
 
     public async getBranchDetails(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string): Promise<BranchDetails> {
-        const parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project);
+        let parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project);
+
+        if (parentDetails && parentDetails.type.toLowerCase() === "epic") {
+            parentDetails = null;
+        }
+
         const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Fields);
         const workItemType = workItem.fields["System.WorkItemType"];
         const workItemTitle = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, "-");
