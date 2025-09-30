@@ -5,13 +5,13 @@ import * as ReactDOM from "react-dom";
 import * as SDK from "azure-devops-extension-sdk";
 import {CommonServiceIds, getClient, IGlobalMessagesService} from "azure-devops-extension-api";
 
-import { Button } from "azure-devops-ui/Button";
-import { ButtonGroup } from "azure-devops-ui/ButtonGroup";
-import { WorkItemTrackingRestClient } from "azure-devops-extension-api/WorkItemTracking";
-import { BranchCreator } from "../branch-creator";
-import { StorageService } from "../storage-service";
-import { RepositorySelect } from "../repository-select/repository-select";
-import { BranchSelect } from "../branch-select/branch-select";
+import {Button} from "azure-devops-ui/Button";
+import {ButtonGroup} from "azure-devops-ui/ButtonGroup";
+import {WorkItemTrackingRestClient} from "azure-devops-extension-api/WorkItemTracking";
+import {BranchCreator} from "../branch-creator";
+import {StorageService} from "../storage-service";
+import {RepositorySelect} from "../repository-select/repository-select";
+import {BranchSelect} from "../branch-select/branch-select";
 
 export interface ISelectBranchDetailsResult {
     repositoryId: string;
@@ -31,7 +31,7 @@ interface ISelectBranchDetailsState {
 class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
     constructor(props: {}) {
         super(props);
-        this.state = { workItems: [], branchNames: [], parentBranchName: undefined, ready: false };
+        this.state = {workItems: [], branchNames: [], parentBranchName: undefined, ready: false};
     }
 
     public componentDidMount() {
@@ -43,7 +43,13 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
                 SDK.resize(undefined, 275);
             }
 
-            this.setState({ projectName: config.projectName, workItems: config.workItems, selectedRepositoryId: config.initialValue, ready: false, branchNames: [] });
+            this.setState({
+                projectName: config.projectName,
+                workItems: config.workItems,
+                selectedRepositoryId: config.initialValue,
+                ready: false,
+                branchNames: []
+            });
 
             await this.setBranchNames();
 
@@ -60,14 +66,14 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
                 <div className="flex-grow">
                     <RepositorySelect
                         projectName={this.state.projectName}
-                        onRepositoryChange={(newRepositoryId) => this.onRepositoryChange(newRepositoryId)} />
+                        onRepositoryChange={(newRepositoryId) => this.onRepositoryChange(newRepositoryId)}/>
                     {
                         this.state.parentBranchName &&
                         <BranchSelect
                             projectName={this.state.projectName}
                             repositoryId={this.state.selectedRepositoryId}
                             parentBranchName={this.state.parentBranchName}
-                            onBranchChange={(newBranchName) => this.onSourceBranchNameChange(newBranchName)} />
+                            onBranchChange={(newBranchName) => this.onSourceBranchNameChange(newBranchName)}/>
                     }
                     <p>Branch Name</p>
                     <div className="branchNames flex-column scroll-auto">
@@ -137,15 +143,11 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
                     this.close(undefined);
                 }
 
-                if (branchDetails.parentDetails) {
-
-                    if (branchDetails.parentDetails.type.toLowerCase() !== "vulnerability" && branchDetails.parentDetails.type.toLowerCase() !== "user-story") {
-                        globalMessagesSvc.addDialog({
-                            message: `Kindly create branch on an item that is under a User Story/Vulnerability or under Epic for unparented.`,
-                        });
-                        this.close(undefined);
-                    }
-
+                if (!branchDetails.hasParent || (branchDetails.parentDetails && branchDetails.parentDetails.type.toLowerCase() !== "vulnerability" && branchDetails.parentDetails.type.toLowerCase() !== "user-story")) {
+                    globalMessagesSvc.addDialog({
+                        message: `Kindly create branch on an item that is under a User Story/Vulnerability.`,
+                    });
+                    this.close(undefined);
                 }
 
                 this.setState(prevState => ({
@@ -163,4 +165,4 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
     }
 }
 
-ReactDOM.render(<BranchDetailsForm />, document.getElementById("root"));
+ReactDOM.render(<BranchDetailsForm/>, document.getElementById("root"));

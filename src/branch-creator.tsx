@@ -156,8 +156,8 @@ export class BranchCreator {
 
     public async getBranchDetails(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string): Promise<BranchDetails> {
         let parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project);
-
-        if (parentDetails && parentDetails.type.toLowerCase() === "epic") {
+        let hasParent = !!parentDetails;
+        if (parentDetails && parentDetails.branchName.includes("enhancements-and-bug-fixes")) {
             parentDetails = null;
         }
 
@@ -181,7 +181,8 @@ export class BranchCreator {
         return {
             parentDetails: parentDetails,
             branchName: branchName,
-            workItemType: workItemType
+            workItemType: workItemType,
+            hasParent: hasParent
         };
     }
 
