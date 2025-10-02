@@ -43,6 +43,7 @@ export class BranchCreator {
             if (await this.branchExists(gitRestClient, repositoryId, project.name, parentDetails.branchName)) {
 
                 parentMessage += `Parent Branch exists.`;
+                await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, parentDetails.id);
 
             }
             else {
@@ -78,6 +79,7 @@ export class BranchCreator {
                     navigationService.openNewWindow(branchUrl, "");
                 }
             });
+            await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, workItemId);
             return;
         }
 
@@ -229,12 +231,23 @@ export class BranchCreator {
                 const workItemType = workItem.fields["System.WorkItemType"];
                 if (workItemType in settingsDocument.workItemState && settingsDocument.workItemState[workItemType].isActive) {
                     const newState = settingsDocument.workItemState[workItemType].value;
+
+                    const user = SDK.getUser();
+                    const assignedTo = user.displayName;
+
+
                     const document: JsonPatchOperation[] = [
                         {
                             from: "",
                             op: Operation.Add,
                             path: "/fields/System.State",
                             value: newState
+                        },
+                        {
+                            from: "",
+                            op: Operation.Add,
+                            path: "/fields/System.AssignedTo",
+                            value: assignedTo
                         }
                     ];
                     await workItemTrackingRestClient.updateWorkItem(document, workItemId);
