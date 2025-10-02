@@ -5,4 +5,5 @@ export default interface BranchDetails {
     branchName: string;
     workItemType: string;
     hasParent: boolean;
+    originalParentDetails: ParentDetails | null;
 }

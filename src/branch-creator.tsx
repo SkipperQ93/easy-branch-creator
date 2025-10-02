@@ -67,6 +67,9 @@ export class BranchCreator {
 
             }
         }
+        else if (branchDetails.originalParentDetails) {
+            await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, branchDetails.originalParentDetails.id);
+        }
 
         if (await this.branchExists(gitRestClient, repositoryId, project.name, branchName)) {
             console.info(`Branch ${branchName} already exists in repository ${repository.name}`);
@@ -158,6 +161,7 @@ export class BranchCreator {
 
     public async getBranchDetails(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string): Promise<BranchDetails> {
         let parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project);
+        const originalParentDetails = parentDetails;
         let hasParent = !!parentDetails;
         if (parentDetails && parentDetails.branchName.includes("enhancements-and-bug-fixes")) {
             parentDetails = null;
@@ -184,7 +188,8 @@ export class BranchCreator {
             parentDetails: parentDetails,
             branchName: branchName,
             workItemType: workItemType,
-            hasParent: hasParent
+            hasParent: hasParent,
+            originalParentDetails: originalParentDetails
         };
     }
 
