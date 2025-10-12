@@ -149,6 +149,15 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
                     });
                     this.close(undefined);
                 }
+                if (branchDetails && branchDetails.parentDetails && branchDetails.parentDetails.type.toLowerCase() === "user-story") {
+                    const isFeatureParent = branchDetails.parentDetails.grandParent?.type?.toLowerCase() === "feature";
+                    if (!isFeatureParent) {
+                        globalMessagesSvc.addDialog({
+                            message: `Kindly assign the parent User Story #${branchDetails.parentDetails.id} to a Feature.`,
+                        });
+                        this.close(undefined);
+                    }
+                }
 
                 this.setState(prevState => ({
                     ...prevState,

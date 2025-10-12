@@ -7,6 +7,7 @@ import {
     IProjectInfo
 } from "azure-devops-extension-api";
 import {
+    WorkItem,
     WorkItemExpand,
     WorkItemRelation,
     WorkItemTrackingRestClient
@@ -116,7 +117,7 @@ export class BranchCreator {
         navigationService.openNewWindow(branchUrl, "");
     }
 
-    public async getParentDetails(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string): Promise<ParentDetails | null> {
+    public async getParentDetails(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string, shouldGetGrandParent: boolean): Promise<ParentDetails | null> {
         const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Relations);
 
         // Initialize parent work item variables
@@ -141,6 +142,9 @@ export class BranchCreator {
                     undefined,
                     WorkItemExpand.Fields
                 );
+                const grandParent = shouldGetGrandParent
+                ? await this.getParentDetails(workItemTrackingRestClient, settingsDocument, parentId, project, false)
+                    : null;
 
                 parentWorkItemType = parentWorkItem.fields["System.WorkItemType"].toLowerCase().replace(/[^a-zA-Z0-9]/g, "-");
                 parentWorkItemId = parentWorkItem.id;
@@ -150,7 +154,8 @@ export class BranchCreator {
                     id: parentWorkItemId,
                     type: parentWorkItemType,
                     title: parentWorkItemTitle,
-                    branchName: parentWorkItemType + "/" + parentWorkItemId + "-" + parentWorkItemTitle
+                    branchName: parentWorkItemType + "/" + parentWorkItemId + "-" + parentWorkItemTitle,
+                    grandParent: grandParent
                 };
             }
         }
@@ -160,7 +165,7 @@ export class BranchCreator {
     }
 
     public async getBranchDetails(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, workItemId: number, project: string): Promise<BranchDetails> {
-        let parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project);
+        let parentDetails = await this.getParentDetails(workItemTrackingRestClient, settingsDocument, workItemId, project, true);
         const originalParentDetails = parentDetails;
         let hasParent = !!parentDetails;
         if (parentDetails && parentDetails.branchName.includes("enhancements-and-bug-fixes")) {
@@ -169,7 +174,7 @@ export class BranchCreator {
 
         const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Fields);
         const workItemType = workItem.fields["System.WorkItemType"];
-        const workItemTitle = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, "-");
+        const workItemTitle: string = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, "-");
 
         let branchName =
             workItemType.replace(/[^a-zA-Z0-9]/g, "-") +
@@ -178,7 +183,7 @@ export class BranchCreator {
             "/" +
             workItemId +
             "-" +
-            workItemTitle;
+            workItemTitle.substring(0, 50);
 
         if (settingsDocument.lowercaseBranchName) {
             branchName = branchName.toLowerCase();

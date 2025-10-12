@@ -3,4 +3,5 @@ export default interface ParentDetails {
     type: string;
     title: string;
     branchName: string;
+    grandParent: ParentDetails | null
 }
