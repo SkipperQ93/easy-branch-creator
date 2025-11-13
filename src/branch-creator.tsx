@@ -7,14 +7,12 @@ import {
     IProjectInfo
 } from "azure-devops-extension-api";
 import {
-    WorkItem,
     WorkItemExpand,
     WorkItemRelation,
     WorkItemTrackingRestClient
 } from "azure-devops-extension-api/WorkItemTracking";
 import {GitBranchStats, GitRestClient} from "azure-devops-extension-api/Git";
 import {StorageService} from "./storage-service";
-import {Tokenizer} from "./tokenizer";
 import {JsonPatchOperation, Operation} from "azure-devops-extension-api/WebApi";
 import SettingsDocument from "./settingsDocument";
 import ParentDetails from "./parentDetails";
@@ -46,8 +44,7 @@ export class BranchCreator {
                 parentMessage += `Parent Branch exists.`;
                 await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, parentDetails.id);
 
-            }
-            else {
+            } else {
                 const defaultBranch = (await gitRestClient.getBranches(repositoryId, project.name)).find((x) => x.isBaseVersion);
                 if (!defaultBranch) {
                     console.warn(`Default branch not found`);
@@ -67,8 +64,7 @@ export class BranchCreator {
                 parentMessage += `Parent Branch created.`
 
             }
-        }
-        else if (branchDetails.originalParentDetails) {
+        } else if (branchDetails.originalParentDetails) {
             await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, branchDetails.originalParentDetails.id);
         }
 
@@ -143,7 +139,7 @@ export class BranchCreator {
                     WorkItemExpand.Fields
                 );
                 const grandParent = shouldGetGrandParent
-                ? await this.getParentDetails(workItemTrackingRestClient, settingsDocument, parentId, project, false)
+                    ? await this.getParentDetails(workItemTrackingRestClient, settingsDocument, parentId, project, false)
                     : null;
 
                 parentWorkItemType = parentWorkItem.fields["System.WorkItemType"].toLowerCase().replace(/[^a-zA-Z0-9]/g, "-");
@@ -174,6 +170,7 @@ export class BranchCreator {
 
         const workItem = await workItemTrackingRestClient.getWorkItem(workItemId, project, undefined, undefined, WorkItemExpand.Fields);
         const workItemType = workItem.fields["System.WorkItemType"];
+        const workItemScope = workItem.fields["Custom.Scope"];
         const workItemTitle: string = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, "-");
 
         let branchName =
@@ -183,6 +180,8 @@ export class BranchCreator {
             "/" +
             workItemId +
             "-" +
+            (workItemScope ? (workItemScope.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase() + "-") : "")
+            +
             workItemTitle.substring(0, 50);
 
         if (settingsDocument.lowercaseBranchName) {
