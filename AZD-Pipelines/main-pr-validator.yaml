@@ -1,0 +1,86 @@
+parameters:
+
+  - name: web_project_directory
+    type: string
+    default:
+
+  - name: web_service_conn_name
+    type: string
+    default:
+
+  - name: mobile_project_directory
+    type: string
+    default:
+
+  - name: mobile_service_conn_name
+    type: string
+    default:
+
+steps:
+  - checkout: self
+    persistCredentials: true
+  - script: |
+      git -c http.extraHeader="AUTHORIZATION: bearer $(System.AccessToken)" clone -b main https://gwpazure.qatar.ncc/gateway/PipelineTemplates/_git/PipelineTemplates/ PipelineTemplates  --branch main --single-branch --depth=1
+    displayName: 'Clone Pipeline Templates Repo'
+#  - task: PythonScript@0
+#    displayName: 'Get Frontend Path'
+#    inputs:
+#      scriptSource: 'inline'
+#      script: |
+#        import os
+#        import yaml
+#        import subprocess
+#
+#        # Define the path to your YAML file
+#        yaml_file_path = 'build-pipeline.yaml'
+#
+#        # Check if the file exists
+#        if not os.path.exists(yaml_file_path):
+#            print(f"Error: The file '{yaml_file_path}' does not exist.")
+#        else:
+#            # Load the YAML file
+#            with open(yaml_file_path, 'r') as file:
+#                try:
+#                    yaml_content = yaml.safe_load(file)
+#
+#                    # Check if 'variables' exists
+#                    if 'variables' not in yaml_content:
+#                        print("Error: 'variables' key is missing in the YAML file.")
+#                    else:
+#                        for variable in yaml_content.get('variables', []):
+#                            if variable.get('name') == 'frontend_project_directory':
+#                              variableValue = variable.get('value')
+#                              print(f'Frontend Project Directory: {variableValue}')
+#                              print(f'##vso[task.setvariable variable=frontend_project_directory;]{variableValue}')
+#
+#                except yaml.YAMLError as e:
+#                    print(f"Error parsing YAML file: {e}")
+#      pythonInterpreter: '/usr/bin/python3'
+#      workingDirectory: './'
+#  - ${{ if and( ne(parameters.web_project_directory, ''), ne(parameters.web_service_conn_name, '') )}}:
+#      - task: npmAuthenticate@0
+#        inputs:
+#          workingFile: "${{ parameters.web_project_directory }}.npmrc"
+#          customEndpoint: "${{ parameters.web_service_conn_name }}"
+#        displayName: "yarn: Authenticate"
+#  - ${{ if and( ne(parameters.mobile_project_directory, ''), ne(parameters.mobile_service_conn_name, '') )}}:
+#    - task: npmAuthenticate@0
+#      inputs:
+#        workingFile: "${{ parameters.mobile_project_directory }}.npmrc"
+#        customEndpoint: "${{ parameters.mobile_service_conn_name }}"
+#      displayName: "yarn: Authenticate"
+  - task: PowerShell@2
+    displayName: 'Validate Target Branch'
+    env:
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+    inputs:
+      targetType: filePath
+      filePath: './PipelineTemplates/validators/validate_target_branch.ps1'
+      arguments: '$(System.CollectionUri) $(System.TeamProject) $(Build.Repository.Name) $(System.PullRequest.PullRequestId) $(System.PullRequest.SourceBranch) $(System.PullRequest.TargetBranch)'
+#  - task: PowerShell@2
+#    displayName: 'Validate Typescript'
+#    inputs:
+#      targetType: filePath
+#      workingDirectory: './'
+#      filePath: './PipelineTemplates/validators/validate_typescript.ps1'
+#      arguments: '$(frontend_project_directory) ${{ parameters.mobile_project_directory }}'

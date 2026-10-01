@@ -1,0 +1,102 @@
+stages:
+- stage: Cleanup
+  pool:
+    name: default2
+  jobs:
+  - job: Delete_Source_Branch
+    displayName: "Delete Source Branch"
+    steps:
+      - checkout: self
+        submodules: false
+        persistCredentials : true
+      - task: PowerShell@2
+        displayName: "Validate PR Branches"
+        env:
+          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+        inputs:
+          targetType: 'inline'
+          script: |
+            
+            $headers = @{
+             Authorization = "Bearer $env:SYSTEM_ACCESSTOKEN"
+             "Content-Type" = "application/json"
+            }
+            
+            $body = @{}
+            
+            $body = @{
+              queries = @(
+                @{
+                   items = @(
+                    "$(Build.SourceVersion)"
+                   )
+                   type = "lastMergeCommit"
+                }
+              )
+            }
+            
+            $commitId = "$(Build.SourceVersion)"
+            
+            $bodyJson = $(ConvertTo-Json ($body) -Depth 10)
+            $url = "$(System.CollectionUri)$(System.TeamProject)/_apis/git/repositories/$(Build.Repository.Name)/pullrequestquery?api-version=6.0"
+            
+            $response = Invoke-RestMethod -Uri $url -Method POST -Headers $headers -Body $bodyJson
+            
+            $sourceBranchName = "$($response.results.$commitId.sourceRefName)"
+            $targetBranchName = "$($response.results.$commitId.targetRefName)"
+            
+            
+            Write-Host "Source: $sourceBranchName"
+            Write-Host "Target: $targetBranchName"
+            
+            $parentPattern = '^([a-zA-Z-]+\/\d+-[a-zA-Z0-9-]+)$'
+            
+            if ($($sourceBranchName -replace "refs/heads/", "") -match $parentPattern) {
+              Write-Host "Source is a parent branch."
+            }
+            else {
+              Write-Host "Source not a parent branch."
+              exit 0
+            }
+            if ($targetBranchName -eq "refs/heads/main" -or $targetBranchName -eq "refs/heads/master") {
+              Write-Host "Target is a default branch."
+            }
+            else {
+              Write-Host "Target is not a default branch."
+              exit 0
+            }
+            
+            $truncSourceBranchName = $($sourceBranchName -replace "refs/", "")
+            $url = "$(System.CollectionUri)$(System.TeamProject)/_apis/git/repositories/$(Build.Repository.Name)/refs?filter=$truncSourceBranchName&api-version=6.0"
+            
+            $response = Invoke-RestMethod -Uri $url -Method GET -Headers $headers
+            Write-Host "Branch '$sourceBranchName' found in repository."
+    
+            if ($response.count -eq 0) {
+              Write-Host "Branch '$sourceBranchName' does not exist in repository."
+              return
+            }
+    
+            # Retrieve the oldObjectId for the branch
+            $oldObjectId = $response.value[0].objectId
+    
+            # Payload for deleting the branch
+            $body = ConvertTo-Json (
+              @(
+                @{
+                   name       = $sourceBranchName;
+                   oldObjectId = $oldObjectId;
+                   newObjectId = "0000000000000000000000000000000000000000";
+                }
+              )
+            )
+                  
+            $updateApiUrl = "$(System.CollectionUri)$(System.TeamProject)/_apis/git/repositories/$(Build.Repository.Name)/refs?api-version=6.0"
+
+            $response = Invoke-RestMethod -Uri $updateApiUrl -Method POST -Headers $headers -Body $body
+
+            if ($response.value | Where-Object { $_.name -eq $sourceBranchName -and $_.success -eq $true }) {
+              Write-Host "Branch '$sourceBranchName' deleted successfully."
+            } else {
+              Write-Host "Branch deletion failed. Response: $($response | ConvertTo-Json -Depth 10)"
+            }
