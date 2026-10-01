@@ -39,7 +39,7 @@ export class BranchSelect extends React.Component<IBranchSelectProps, IBranchSel
     }
 
     public async componentDidUpdate(prevProps: IBranchSelectProps) {
-        if (prevProps.repositoryId !== this.props.repositoryId) {
+        if (prevProps.repositoryId !== this.props.repositoryId || prevProps.parentBranchName !== this.props.parentBranchName) {
             await this.loadBranches();
         }
     }

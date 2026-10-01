@@ -16,7 +16,7 @@ import {StorageService} from "./storage-service";
 import {JsonPatchOperation, Operation} from "azure-devops-extension-api/WebApi";
 import SettingsDocument from "./settingsDocument";
 import ParentDetails from "./parentDetails";
-import BranchDetails from "./branchDetails";
+import BranchDetails, {ExistingBranches} from "./branchDetails";
 
 export class BranchCreator {
 
@@ -31,15 +31,28 @@ export class BranchCreator {
         const repository = await gitRestClient.getRepository(repositoryId, project.name);
 
         const branchDetails = await this.getBranchDetails(workItemTrackingRestClient, settingsDocument, workItemId, project.name);
-        const branchName = branchDetails.branchName;
         const parentDetails = branchDetails.parentDetails;
+
+        const existingBranches = await this.getExistingBranches(gitRestClient, repositoryId, project.name, branchDetails);
+        if (existingBranches.duplicateBranchNames.length > 0) {
+            console.warn(`Duplicate branches found for work item ${workItemId}`, existingBranches.duplicateBranchNames);
+
+            globalMessagesSvc.addDialog({
+                message: `Multiple branches exist for the same work item: ${existingBranches.duplicateBranchNames.join(", ")}. Kindly delete the extra branches and try again.`
+            });
+
+            return;
+        }
+
+        const branchName = existingBranches.branchName ?? branchDetails.branchName;
+        const parentBranchName = existingBranches.parentBranchName ?? parentDetails?.branchName;
         const branchUrl = `${gitBaseUrl}/${repository.name}?version=GB${encodeURI(branchName)}`;
 
         let parentMessage = "";
 
         if (parentDetails) {
 
-            if (await this.branchExists(gitRestClient, repositoryId, project.name, parentDetails.branchName)) {
+            if (existingBranches.parentBranchName) {
 
                 parentMessage += `Parent Branch exists.`;
                 await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, parentDetails.id);
@@ -68,7 +81,7 @@ export class BranchCreator {
             await this.updateWorkItemState(workItemTrackingRestClient, settingsDocument, project.id, branchDetails.originalParentDetails.id);
         }
 
-        if (await this.branchExists(gitRestClient, repositoryId, project.name, branchName)) {
+        if (existingBranches.branchName) {
             console.info(`Branch ${branchName} already exists in repository ${repository.name}`);
 
             globalMessagesSvc.addToast({
@@ -86,10 +99,10 @@ export class BranchCreator {
 
         let branch: GitBranchStats | undefined = undefined;
 
-        if (parentDetails) {
-            branch = (await gitRestClient.getBranches(repositoryId, project.name)).find((x) => x.name === parentDetails.branchName);
+        if (parentBranchName) {
+            branch = (await gitRestClient.getBranches(repositoryId, project.name)).find((x) => x.name === parentBranchName);
             if (!branch) {
-                console.warn(`Branch ${parentDetails.branchName} not found`);
+                console.warn(`Branch ${parentBranchName} not found`);
                 return;
             }
         } else {
@@ -146,11 +159,15 @@ export class BranchCreator {
                 parentWorkItemId = parentWorkItem.id;
                 parentWorkItemTitle = parentWorkItem.fields["System.Title"].toLowerCase().replace(/[^a-zA-Z0-9]/g, "-");
 
+                // Existing branches are matched on this prefix so a title change doesn't create a new branch
+                const branchPrefix = parentWorkItemType + "/" + parentWorkItemId + "-";
+
                 return {
                     id: parentWorkItemId,
                     type: parentWorkItemType,
                     title: parentWorkItemTitle,
-                    branchName: parentWorkItemType + "/" + parentWorkItemId + "-" + parentWorkItemTitle,
+                    branchName: branchPrefix + parentWorkItemTitle,
+                    branchPrefix: branchPrefix,
                     grandParent: grandParent
                 };
             }
@@ -173,24 +190,27 @@ export class BranchCreator {
         const workItemScope = workItem.fields["Custom.Scope"];
         const workItemTitle: string = workItem.fields["System.Title"].replace(/[^a-zA-Z0-9]/g, "-");
 
-        let branchName =
+        // Existing branches are matched on this prefix so a scope or title change doesn't create a new branch.
+        // Always lowercase, like the parent branch, so the prefix lookup can't miss on case.
+        const branchPrefix = (
             workItemType.replace(/[^a-zA-Z0-9]/g, "-") +
             "/" +
             (parentDetails ? (parentDetails.type + "-" + parentDetails.id) : "unparented") +
             "/" +
             workItemId +
-            "-" +
-            (workItemScope ? (workItemScope.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase() + "-") : "")
-            +
-            workItemTitle.substring(0, 50);
+            "-"
+        ).toLowerCase();
 
-        if (settingsDocument.lowercaseBranchName) {
-            branchName = branchName.toLowerCase();
-        }
+        const branchName = (
+            branchPrefix +
+            (workItemScope ? (workItemScope.replace(/[^a-zA-Z0-9]/g, "-") + "-") : "") +
+            workItemTitle.substring(0, 50)
+        ).toLowerCase();
 
         return {
             parentDetails: parentDetails,
             branchName: branchName,
+            branchPrefix: branchPrefix,
             workItemType: workItemType,
             hasParent: hasParent,
             originalParentDetails: originalParentDetails
@@ -228,9 +248,28 @@ export class BranchCreator {
         await workItemTrackingRestClient.updateWorkItem(document, workItemId);
     }
 
-    private async branchExists(gitRestClient: GitRestClient, repositoryId: string, project: string, branchName: string): Promise<boolean> {
-        const branches = await gitRestClient.getRefs(repositoryId, project, `heads/${branchName}`);
-        return branches.find((x) => x.name == `refs/heads/${branchName}`) !== undefined;
+    public async getExistingBranches(gitRestClient: GitRestClient, repositoryId: string, project: string, branchDetails: BranchDetails): Promise<ExistingBranches> {
+        const parentBranchNames = branchDetails.parentDetails
+            ? await this.findBranchesByPrefix(gitRestClient, repositoryId, project, branchDetails.parentDetails.branchPrefix)
+            : [];
+        const branchNames = await this.findBranchesByPrefix(gitRestClient, repositoryId, project, branchDetails.branchPrefix);
+
+        return {
+            parentBranchName: parentBranchNames.length === 1 ? parentBranchNames[0] : undefined,
+            branchName: branchNames.length === 1 ? branchNames[0] : undefined,
+            duplicateBranchNames: [
+                ...(parentBranchNames.length > 1 ? parentBranchNames : []),
+                ...(branchNames.length > 1 ? branchNames : [])
+            ]
+        };
+    }
+
+    private async findBranchesByPrefix(gitRestClient: GitRestClient, repositoryId: string, project: string, branchPrefix: string): Promise<string[]> {
+        const refs = await gitRestClient.getRefs(repositoryId, project, `heads/${branchPrefix}`);
+        // The prefix ends with "-" after the ID, so "story/100-" never matches "story/1000-"
+        return refs
+            .map((x) => x.name.substring("refs/heads/".length))
+            .filter((x) => x.toLowerCase().startsWith(branchPrefix));
     }
 
     private async updateWorkItemState(workItemTrackingRestClient: WorkItemTrackingRestClient, settingsDocument: SettingsDocument, projectId: string, workItemId: number) {

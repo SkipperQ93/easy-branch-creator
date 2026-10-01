@@ -7,7 +7,10 @@ import {CommonServiceIds, getClient, IGlobalMessagesService} from "azure-devops-
 
 import {Button} from "azure-devops-ui/Button";
 import {ButtonGroup} from "azure-devops-ui/ButtonGroup";
+import {MessageCard, MessageCardSeverity} from "azure-devops-ui/MessageCard";
 import {WorkItemTrackingRestClient} from "azure-devops-extension-api/WorkItemTracking";
+import {GitRestClient} from "azure-devops-extension-api/Git";
+import BranchDetails from "../branchDetails";
 import {BranchCreator} from "../branch-creator";
 import {StorageService} from "../storage-service";
 import {RepositorySelect} from "../repository-select/repository-select";
@@ -26,12 +29,16 @@ interface ISelectBranchDetailsState {
     ready: boolean;
     branchNames: string[];
     parentBranchName: string | undefined;
+    duplicateBranchNames: string[];
 }
 
 class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
+    private branchDetails: BranchDetails[] = [];
+    private existingBranchesRequest = 0;
+
     constructor(props: {}) {
         super(props);
-        this.state = {workItems: [], branchNames: [], parentBranchName: undefined, ready: false};
+        this.state = {workItems: [], branchNames: [], parentBranchName: undefined, duplicateBranchNames: [], ready: false};
     }
 
     public componentDidMount() {
@@ -52,6 +59,7 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
             });
 
             await this.setBranchNames();
+            await this.setExistingBranches();
 
             this.setState(prevState => ({
                 ...prevState,
@@ -75,6 +83,12 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
                             parentBranchName={this.state.parentBranchName}
                             onBranchChange={(newBranchName) => this.onSourceBranchNameChange(newBranchName)}/>
                     }
+                    {
+                        this.state.duplicateBranchNames.length > 0 &&
+                        <MessageCard severity={MessageCardSeverity.Error}>
+                            Multiple branches exist for the same work item: {this.state.duplicateBranchNames.join(", ")}. Kindly delete the extra branches.
+                        </MessageCard>
+                    }
                     <p>Branch Name</p>
                     <div className="branchNames flex-column scroll-auto">
                         <div>
@@ -86,7 +100,7 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
                 </div>
                 <ButtonGroup className="branch-details-form-button-bar ">
                     <Button
-                        disabled={!this.state.selectedRepositoryId}
+                        disabled={!this.state.selectedRepositoryId || this.state.duplicateBranchNames.length > 0}
                         primary={true}
                         text="Create Branch"
                         onClick={() => this.close(this.state.selectedRepositoryId ? {
@@ -114,7 +128,7 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
         this.setState(prevState => ({
             ...prevState,
             selectedRepositoryId: newRepositoryId
-        }));
+        }), () => this.setExistingBranches());
     }
 
     private onSourceBranchNameChange(newBranchName?: string | undefined): void {
@@ -164,6 +178,7 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
                     parentBranchName: branchDetails.parentDetails?.branchName
                 }))
                 branchNames.push(branchDetails.branchName);
+                this.branchDetails.push(branchDetails);
             }
 
             this.setState(prevState => ({
@@ -171,6 +186,41 @@ class BranchDetailsForm extends React.Component<{}, ISelectBranchDetailsState> {
                 branchNames: branchNames
             }));
         }
+    }
+
+    // Replaces the generated names with the branches that already exist for the work items in the selected repository
+    private async setExistingBranches() {
+        const projectName = this.state.projectName;
+        const repositoryId = this.state.selectedRepositoryId;
+        if (!projectName || !repositoryId || this.branchDetails.length === 0) {
+            return;
+        }
+
+        const request = ++this.existingBranchesRequest;
+        const gitRestClient = getClient(GitRestClient);
+        const branchCreator = new BranchCreator();
+
+        const branchNames: string[] = [];
+        const duplicateBranchNames: string[] = [];
+        let parentBranchName: string | undefined;
+        for (const branchDetails of this.branchDetails) {
+            const existingBranches = await branchCreator.getExistingBranches(gitRestClient, repositoryId, projectName, branchDetails);
+            branchNames.push(existingBranches.branchName ?? branchDetails.branchName);
+            duplicateBranchNames.push(...existingBranches.duplicateBranchNames);
+            parentBranchName = existingBranches.parentBranchName ?? branchDetails.parentDetails?.branchName;
+        }
+
+        // A newer repository selection has started its own lookup
+        if (request !== this.existingBranchesRequest) {
+            return;
+        }
+
+        this.setState(prevState => ({
+            ...prevState,
+            branchNames: branchNames,
+            parentBranchName: parentBranchName,
+            duplicateBranchNames: [...new Set(duplicateBranchNames)]
+        }));
     }
 }
 

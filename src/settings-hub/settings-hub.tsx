@@ -236,22 +236,6 @@ class SettingsHub extends React.Component<{}, ISettingsHubState> {
                                     }}
                                 />
                             </FormItem>
-                            <FormItem className="margin-top-8">
-                                <Checkbox
-                                    label="Lowercase branch name"
-                                    checked={this.state.updatedSettingsDocument.lowercaseBranchName}
-                                    disabled={!this.state.isReady}
-                                    onChange={(event, checked) => {
-                                        this.setState(prevState => ({
-                                            ...prevState,
-                                            updatedSettingsDocument: {
-                                                ...prevState.updatedSettingsDocument,
-                                                lowercaseBranchName: checked,
-                                            }
-                                        }))
-                                    }}
-                                />
-                            </FormItem>
                         </form>
                     </Card>
                     <Card className="flex-grow">
@@ -375,7 +359,6 @@ class SettingsHub extends React.Component<{}, ISettingsHubState> {
         }
 
         if (initialSettingsDocument.defaultBranchNameTemplate !== updatedSettingsDocument.defaultBranchNameTemplate ||
-            initialSettingsDocument.lowercaseBranchName !== updatedSettingsDocument.lowercaseBranchName ||
             initialSettingsDocument.nonAlphanumericCharactersReplacement !== updatedSettingsDocument.nonAlphanumericCharactersReplacement ||
             initialSettingsDocument.updateWorkItemState !== updatedSettingsDocument.updateWorkItemState) {
             return false;
