@@ -1,0 +1,15 @@
+trigger: none
+
+pool:
+  name: default2
+
+resources:
+  repositories:
+    - repository: PipelineTemplates
+      type: git
+      endpoint: AzureDevOpsGatewayServiceConnection
+      name: PipelineTemplates/PipelineTemplates
+      ref: main
+
+steps:
+  - template: validators/main-pr-validator.yaml@PipelineTemplates

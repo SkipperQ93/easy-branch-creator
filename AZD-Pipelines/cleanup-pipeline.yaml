@@ -1,0 +1,16 @@
+trigger:
+  - main
+
+pool:
+  name: default
+
+resources:
+  repositories:
+    - repository: PipelineTemplates
+      type: git
+      endpoint: AzureDevOpsGatewayServiceConnection
+      name: PipelineTemplates/PipelineTemplates
+      ref: main
+
+stages:
+  - template: utilities/delete_pr_source_branch.yaml@PipelineTemplates
